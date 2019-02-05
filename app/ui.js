@@ -395,6 +395,7 @@ const UI = {
                 document.documentElement.classList.add("noVNC_disconnecting");
                 break;
             case 'disconnected':
+                window.close();
                 break;
             case 'reconnecting':
                 transition_elem.textContent = _("Reconnecting...");
