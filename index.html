@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link type="text/css" rel="stylesheet" href="./css/reset.css">
+        <link type="text/css" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:700,300">
+        <link type="text/css" rel="stylesheet" href="./css/style.css">
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    </head>
+    <body>
+        <div id="app" class="listener" ref="container">
+            <suites :tree-data="dataDict" :key="counter"></suites>
+        </div>
+        <script>
+            Vue.component('suites', {
+                template: ' \
+                    <ul id="root" class="pure-tree main-tree"> \
+                        <item :tree="treeData"></item> \
+                    </ul> \
+                ',
+                props: ['treeData']
+            });
+            Vue.component('item',{
+                template: ' \
+                    <li> \
+                        <input v-if="Object.keys(tree).length > 0" type="checkbox" :id="tree.attributes.id" checked> \
+                        <label v-if="Object.keys(tree).length > 0" :for="tree.attributes.id" :event-type="tree.attributes.type"> \
+                            &emsp; \
+                            <p>{{ tree.attributes.name }}</p> \
+                        </label> \
+                        <ul v-if="Object.keys(tree).length > 1" class="pure-tree"> \
+                            <item v-for="(item, key, index) in getNode" :tree="item" :key="index"></item> \
+                        </ul> \
+                    </li> \
+                ',
+                props: ['tree'],
+                computed: {
+                    getNode() {
+                        let node = {};
+                        for(let i in this.tree) {
+                            if(/^\d+$/.test(i)) {
+                                node[i] = this.tree[i];
+                            }
+                        }
+                        return node;
+                    }
+                }
+            });
+            new Vue({
+                el: '#app',
+                data: {
+                    dataDict: {},
+                    counter: 0
+                },
+                created: function() {
+                    this.init();
+                },
+                destroyed: function() {
+                    this.ws.close();
+                },
+                methods: {
+                    init() {
+                        const wsuri = 'ws://127.0.0.1:9001';
+                        this.ws = new WebSocket(wsuri);
+                        this.ws.onmessage = this.received;
+                    },
+                    received(evt) {
+                        const data = JSON.parse(evt.data);
+                        const attributes = {
+                            'name': data['name'],
+                            'type': data['type'],
+                            'id': data['path'].length > 0 ? data['path'] : 'root'
+                        }
+                        const path = data['path'].length > 0 ? data['path'] + '.attributes' : data['path'] + 'attributes';
+                        this.setVal(this.dataDict, path, attributes);
+                        this.counter++;
+                        this.$refs.container.scrollTop = this.$refs.container.scrollHeight;
+                    },
+                    setVal(obj, path, val) {
+                        const pArray = path.split('.');
+                        const len = pArray.length;
+                        for(let i = 0; i < len - 1; i++) {
+                            const el = pArray[i];
+                            if(!obj[el]) {
+                                obj[el] = {}
+                            }
+                            obj = obj[el]
+                        }
+                        obj[pArray[len-1]] = val;
+                    },
+                    getVal(obj, path) {
+                        for(let i = 0, pArray = path.split('.'), len = pArray.length; i < len; i++) {
+                            obj = obj[pArray[i]];
+                        }
+                        return obj;
+                    },
+                    sleep(time) {
+                        return new Promise((resolve) => setTimeout(resolve, time));
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
